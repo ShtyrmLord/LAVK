@@ -1,4 +1,4 @@
 LAVK
 ====
 
-Loader audio from VK
+Загрузчик песен из ВКонтакте
