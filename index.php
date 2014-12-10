@@ -1,9 +1,9 @@
 <?php
 set_time_limit(0);
-$login = "+79092134606";
-$pass = "xedfr[tk19";
+$login = "";
+$pass = "";
 $hash = "a9dba258f7cd29db46";
-$id = "188178813";
+$id = "";
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, 'login.vk.com');
