@@ -1,105 +1,51 @@
 <?php
-//////////////////////////////////////////////
-// Скрипт скачки аудиозаписей из ВКонтакте. //
-// Версия 1.1                               //
-// Выпуск 03.11.14 (Создавалось 2 дня)      //
-// Меньше 100 строк, приемлимая скрость     //
-// Создал ShtyrmLord                        //
-//////////////////////////////////////////////
+set_time_limit(0);
+$login = "+79092134606";
+$pass = "xedfr[tk19";
+$hash = "a9dba258f7cd29db46";
+$id = "188178813";
 
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, 'login.vk.com');
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+curl_setopt($ch, CURLOPT_USERAGENT,'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.104 Safari/537.36');
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HEADER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, "act=login&_origin=http://vk.com&ip_h=".$hash."&email=".$login."&pass=".$pass);
+curl_setopt($ch, CURLOPT_COOKIEJAR, "1cookies.txt");  
+curl_setopt($ch, CURLOPT_COOKIEFILE, "1cookies.txt"); 
+curl_setopt($ch, CURLOPT_REFERER, "http://m.vk.com/login");
 
-// Настройки и инициализация
-set_time_limit(0);                     // Бесконечное выполнение скрипта
-$do = 0;                               // Если хотите запустить скрипт в режиме тестирования и не скачивать, создавать папки, то поставьте 0
-$c = 2779;                             // Скок всего песен
-$from = 0;                             // С какой по счету начать скачивание
-$to = 1000;                             // До какой по счету скачивать
-//Можно таким образом настраивать докачку, скачивать лишь часть и запустив 2 копии скрипта, в одном с 0 до 100 и в другом с 100 до 200, реализовать многопоточность
-$dirload = "load3";                    // Папка куда загрузить все песни
-$src = file_get_contents("src.html");  // Прокрутите ваши аудиозаписи до конца и сохраните браузером как html файл. Назовите его src.html и положите в папку со скриптом.
-//$src = coder($src, 2);               // Расскоментируйте эту строку, если кривые символы. Все дело в кодировке src.html
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, "act=load_audios_silent&al=1&gid=0&id=".$id."&please_dont_ddos=2");
+curl_setopt($ch, CURLOPT_URL, 'https://vk.com/audio');
 
-// Функции
-function normer($str) { // Убирает в строке лишние знаки
-	$str = preg_replace("/&#.*;/i", "", $str);
-	$str = preg_replace("/\"/i", "", $str);
-	$str = preg_replace("/\[/i", "(", $str);
-	$str = preg_replace("/\]/i", ")", $str);
-	$str = preg_replace("/:/i", "", $str);
-	$str = preg_replace("/\?/i", "", $str);
-	$str = preg_replace("/\//i", "", $str);
-	$str = preg_replace("/&/i", "", $str);
-	$str = preg_replace("/&amp;/i", "", $str);
-	$str = preg_replace("/_/i", "", $str);
-	$str = preg_replace("/!/i", "", $str);
-	return $str;
-}
+$out = curl_exec($ch);
+$out = iconv('windows-1251', 'UTF-8', $out);
 
-function coder($str, $r) { // Кодирует из юникода в кирилицу - режим 1, из кирилицы в юникод - режим 2
-	if ($r == 1)
-		$str = iconv("UTF-8", "windows-1251", $str);
-	if ($r == 2)
-		$str = iconv("windows-1251", "UTF-8", $str);
-	return $str;
-}
+$head = '/HTTP\/1.1 200 OK
+Server: Apache
+Date: .*
+Content-Type: text\/html; charset=windows-1251
+Content-Length: .*
+Connection: keep-alive
+X-Powered-By: .*
+Pragma: no-cache
+Cache-control: no-store
 
-function loader($url, $dir, $name) { // Скачивает по урлу $url и сохранят в папке $dir под названием $name
-	file_put_contents($dir."/".$name.'.mp3', file_get_contents($url));
-}
+<!--.*<!>audio.css,audio.js<!>.*<!>.*<!>.*<!>{"all":\[\[/i';
+$foot = '/\]\]}<!>.*/i';
+$arr = explode("],[", $out);
+curl_close($ch);
+$c = count($arr)-1;
+$arr[0] = preg_replace($head, "", $arr[0]);
+$arr[$c] = preg_replace($foot, "", $arr[$c]);
+//print_r($arr);
 
-//Парсим файл с песнями и формируем 3 массива
-preg_match_all("/https:\/\/.*mp3/i", $src, $ar1);                      // Массив ссылок на песни
-preg_match_all("/return false\">(.*)<\/a><\/b>/i", $src, $ar2);        // Массив групп и исполнителей
-preg_match_all("/<span class=\"title\">(.*) <\/span>/i", $src, $ar3);  // Массив названий песен Включает в себя следующий цикл Результат $ar33, а не $ar3
-for($i=0;$i<$c;$i++) {
-	$ar = $ar3[1][$i];
-	if (preg_match("/>(.*)</i", $ar)) {
-		preg_match("/>(.*)</i", $ar, $mtc);
-		$ar33[$i] = $mtc[1];
-	}
-	else $ar33[$i] = $ar;
-}
-// Считаем количество значений в массивах
-$car1 = count($ar1[0]);
-$car2 = count($ar2[1]);
-$car3 = count($ar33);
-
-if (($c != $car1) or ($c != $car2) or ($c != $car3)) { // Если количество значений в массивах не совпадает, выводим ошибку
-	echo "Ошибочка. Не все песни\названия\ссылки определились";
-	exit;
-}
-
-if ($do != 1)
-	echo "Скрипт запущен в режиме теста, скачивание и создание папок отключено, только вывод названий!<br>";
-echo "Список для скачки готов. Всего ".$c." песен. Начинаем закачку.<br>";
-flush();
-
-$dirload = normer($dirload);
-$start = microtime(true);   // Когда начали загрузку
-$start1 = $start;           // $start1 для измерения загрузки одной песни, а не всех
-for($i=$from;$i<$to;$i++){  // Выполняем цикл скачки, смотря на $to и $from
-	$group = $ar2[1][$i];   // Переменная группы или исполнителя
-	$title = $ar33[$i];     // Переменная названия песни
-	$url = $ar1[0][$i];     // Переменная ссылки
-	$group = normer($group);
-    $title = normer($title);
-	$name = $group." --- ".$title; // Полное название файла в итоге без формата
-
-	$dir = $dirload."/".$group;
-	$dir = coder($dir, 1);
-	if (!file_exists($dir)) { // Проверяем есть ли папка исполнителя, если нет, то создаем
-		if ($do == 1)
-			mkdir($dir);
-	}
-
-	echo ($i+1).") ".$name; // Выводим название и какая по счету песня
-	flush();
-	$name = coder($name, 1);
-	if ($do == 1)
-		loader($url, $dir, $name); // Грузим песню
-	echo "<br>Готово за ".round((microtime(true) - $start1), 0)." сек<br>"; // Отчитываемся о загрузке
-	flush();
-	$start1 = microtime(true);
-}
-echo "Все готово за ".round((microtime(true) - $start), 0)." сек<br>Приятного прослушивания!";
+$arer = $arr[13];
+$arr1 = explode("','", $arer);
+print_r($arr1);
 ?>
